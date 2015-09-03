@@ -1,0 +1,115 @@
+
+apply plugin: 'java'
+apply plugin: 'maven'
+apply plugin: 'eclipse'
+apply plugin: 'idea'
+
+defaultTasks 'uploadArchives'
+
+group = 'org.jetbrains.java.decompiler'
+archivesBaseName = 'fernflower'
+version = 'sponge-SNAPSHOT'
+sourceCompatibility = '1.6'
+targetCompatibility = '1.6'
+
+ext.projectName = 'Fernflower'
+ext.inceptionYear = '2015'
+ext.packaging = 'jar'
+ext.url = 'https://github.com/fesh0r/fernflower/'
+ext.description = 'Fernflower Decompiler'
+ext.organization = 'JetBrains'
+ext.buildNumber = project.hasProperty("buildNumber") ? buildNumber : '0'
+ext.ciSystem = project.hasProperty("ciSystem") ? ciSystem : 'unknown'
+ext.commit = project.hasProperty("commit") ? commit : 'unknown'
+
+repositories {
+    mavenCentral()
+}
+
+configurations {
+    deployerJars
+}
+
+dependencies {
+    deployerJars 'org.apache.maven.wagon:wagon-ftp:2.7'
+}
+
+sourceSets {
+    main {
+        java.srcDir 'src'
+        resources.srcDir 'res'
+    }
+}
+
+tasks.withType(JavaCompile) {
+    options.deprecation = true
+    options.encoding = 'utf8'
+}
+
+jar {
+    manifest.mainAttributes(
+        "Main-Class": "org.jetbrains.java.decompiler.main.decompiler.ConsoleDecompiler",
+        "Created-By": System.properties['java.vm.version'] + " (" + System.properties['java.vm.vendor'] + ")",
+        "Implementation-Title": name,
+        "Implementation-Version": version + "+" + ciSystem + "-b" + buildNumber + ".git-" + commit,
+        "Implementation-Vendor": url)
+}
+
+task sourceJar(type: Jar) {
+    from sourceSets.main.java
+    from sourceSets.main.resources
+    classifier = "sources"
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    from javadoc.destinationDir
+    classifier = "javadoc"
+}
+
+artifacts {
+    archives jar
+    archives sourceJar
+    archives javadocJar
+}
+
+uploadArchives {
+    dependsOn build
+    repositories {
+        mavenDeployer {
+            configuration = configurations.deployerJars
+
+            if (project.hasProperty("spongeRepo"))
+            {
+                repository(url: project.spongeRepo) {
+                    authentication(userName: project.spongeUsername, password: project.spongePassword)
+                }
+            }
+
+            pom {
+                groupId = project.group
+                version = project.version
+                artifactId = project.archivesBaseName
+                project {
+                    name project.archivesBaseName
+                    packaging 'jar'
+                    description 'Fernflower Decompiler'
+                    url 'https://github.com/fesh0r/fernflower/'
+
+                    scm {
+                        url 'https://github.com/fesh0r/fernflower/'
+                        connection 'scm:git:git://github.com/fesh0r/fernflower.git'
+                        developerConnection 'scm:git:git@github.fesh0r/fernflower.git'
+                    }
+
+                    licenses {
+                        license {
+                            name 'Apache 2.0 License'
+                            url 'http://www.apache.org/licenses/LICENSE-2.0'
+                            distribution 'repo'
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
